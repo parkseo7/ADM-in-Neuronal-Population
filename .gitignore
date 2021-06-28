@@ -1,2 +1,5 @@
 # Ignore all data files
 data/arrays/*
+
+# Exceptions
+!data/arrays/.txt
