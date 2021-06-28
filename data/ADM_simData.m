@@ -9,7 +9,7 @@ addpath('matrices');
 addpath('fcns');
 
 % Set up directory (check if it exists)
-foldername = 'trial1' ;
+foldername = 'ICBM' ;
 cwd = pwd ;
 dir_folder = fullfile(cwd, 'arrays', foldername) ;
 
@@ -17,20 +17,23 @@ if ~exist(dir_folder, 'dir')
    mkdir(dir_folder)
 end
 
-filename = 'results.mat'; % .csv file name
+filename = 'results4.mat'; % .csv file name
 dir_file = fullfile(dir_folder, filename); % Export directory
 
 % Import connection matrices from 'matrices' folder
-dir_W = fullfile(cwd, 'matrices', 'fs85_connectmat.txt');
-dir_pos = fullfile(cwd, 'matrices', 'fs85_centers.txt');
+importname = 'ICBM';
+dir_W = fullfile(cwd, 'matrices', importname, 'icbm_fiber_mat.txt');
+dir_pos = fullfile(cwd, 'matrices', importname, 'fs_region_centers_68_sort.txt');
 
 W = dlmread(dir_W); % Symmetric matrix
+% W = (W > 0.0002) .* W ; % Remove all negligible connections
+W = W / max(W(:)); % Normalize matrix
 pos = dlmread(dir_pos); % Positions of nodes
 
 % Parameters
 N = size(pos, 1);
 r0 = 1.0 * ones(N,1); % Initial activation rates
-v0 = 5.0; % Initial velocity
+v0 = 3.0; % Initial velocity
 kappa = 0.0005;
 
 t0 = 0; % Initial time (in seconds)
@@ -41,12 +44,22 @@ dist = pdist2(pos, pos);
 tau0 = dist / v0;
 
 % Iterative learning
-eta = 0.2;
-num_iter = 1500;
+eta = 0.1 / kappa;
+num_iter = 30000;
 eigs_iter = zeros(N, num_iter);
 rE_iter = zeros(N, num_iter);
 tau = tau0;
 
+% Initial gamma check (delete after)
+gamma0 = zeros(N);
+getGamma0 = @(i,j) exp(-kappa/2 * sum((W(:,j) > 0) .* (tau0(i,j) - tau0(:,j)).^2));
+for j1=1:N
+    for j2=1:N
+        gamma0(j1,j2) = getGamma0(j1,j2);
+    end
+end
+
+        
 % Wait bar
 f = waitbar(0,'Starting trials...') ;
 
@@ -60,8 +73,8 @@ for k=1:num_iter+1
     
     gamma = zeros(N);
     tau_diffs = zeros(N);
-    getGamma = @(i,j) exp(-kappa/2 * sum((tau(i,j) - tau(:,j)).^2));
-    getDiffs = @(i,j) sum(tau(i,j) - tau(:,j));
+    getGamma = @(i,j) exp(-kappa/2 * sum((W(:,j) > 0) .* (tau(i,j) - tau(:,j)).^2)); % Use W?
+    getDiffs = @(i,j) sum((W(:,j) > 0) .* (tau(i,j) - tau(:,j))); % Weighted here as well?
     for k1=1:N
         for k2=1:N
             gamma(k1,k2) = getGamma(k1,k2);
@@ -80,7 +93,7 @@ for k=1:num_iter+1
     end
     
     % Adjust delays with gradient descent:
-    tau = tau - eta*kappa*bsxfun(@times, rE', rE).*W.*gamma*tau_diffs/N; 
+    tau = tau - eta*kappa*bsxfun(@times, rE', rE).*W.*gamma.*tau_diffs/N; 
 end
 
 close(f);
