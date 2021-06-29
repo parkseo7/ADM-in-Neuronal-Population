@@ -17,7 +17,7 @@ if ~exist(dir_folder, 'dir')
    mkdir(dir_folder)
 end
 
-filename = 'results4.mat'; % .csv file name
+filename = 'results2.mat'; % .csv file name
 dir_file = fullfile(dir_folder, filename); % Export directory
 
 % Import connection matrices from 'matrices' folder
@@ -44,15 +44,15 @@ dist = pdist2(pos, pos);
 tau0 = dist / v0;
 
 % Iterative learning
-eta = 0.1 / kappa;
-num_iter = 30000;
+eta = 100 / kappa;
+num_iter = 6000;
 eigs_iter = zeros(N, num_iter);
 rE_iter = zeros(N, num_iter);
 tau = tau0;
 
 % Initial gamma check (delete after)
 gamma0 = zeros(N);
-getGamma0 = @(i,j) exp(-kappa/2 * sum((W(:,j) > 0) .* (tau0(i,j) - tau0(:,j)).^2));
+getGamma0 = @(i,j) exp(-kappa/2 * sum((W(i,:) > 0) .* (tau0(i,j) - tau0(i,:)).^2));
 for j1=1:N
     for j2=1:N
         gamma0(j1,j2) = getGamma0(j1,j2);
@@ -73,8 +73,8 @@ for k=1:num_iter+1
     
     gamma = zeros(N);
     tau_diffs = zeros(N);
-    getGamma = @(i,j) exp(-kappa/2 * sum((W(:,j) > 0) .* (tau(i,j) - tau(:,j)).^2)); % Use W?
-    getDiffs = @(i,j) sum((W(:,j) > 0) .* (tau(i,j) - tau(:,j))); % Weighted here as well?
+    getGamma = @(i,j) exp(-kappa/2 * sum((W(i,:) > 0) .* (tau(i,j) - tau(i,:)).^2)); % Use W?
+    getDiffs = @(i,j) sum((W(i,:) > 0) .* (tau(i,j) - tau(i,:))); % Weighted here as well?
     for k1=1:N
         for k2=1:N
             gamma(k1,k2) = getGamma(k1,k2);
@@ -108,4 +108,4 @@ y = sol.y;
 
 % Export arrays and parameters
 save(dir_file, 'N', 'r0', 'v0', 'kappa', 'W', 'pos', 't0', 'tf', 'eta', 'tau0', ...
-    'tau', 'dist', 'eigs_iter', 'rE_iter', 't', 'y');
+    'tau', 'dist', 'eigs_iter', 'rE_iter', 'gamma', 't', 'y');
