@@ -24,12 +24,13 @@ def sumSquaredDiffs(W, tau):
     for i in range(tau.shape[0]):
         # Along each column of delays, subtract v_i - v_j
         v_i = np.reshape(tau[i,:], -1)
-        W_i = np.reshape(W[i,:] > 0, -1)
+        W_i = np.reshape(W[i,:], -1)
         boolW_i = (W_i[:,np.newaxis] > 0).astype('float64')
         diff_i = np.sum(boolW_i * np.abs(v_i - v_i[:,np.newaxis])**2, 0)
         diffs[i,:] = diff_i
      
     return diffs
+
 
 def sumDiffs(W, tau):
     '''
