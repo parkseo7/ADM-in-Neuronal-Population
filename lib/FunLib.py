@@ -23,7 +23,7 @@ def coincidenceFactorGauss(kappa, W, tau):
         if W_sum != 0:
             W_i = W_i / W_sum
         diff_i = np.abs(v_i - v_i[:,np.newaxis])**2
-        sum_i = np.sum(W_i * np.exp(-diff_i/(2*kappa)), 0)
+        sum_i = np.sum(W_i * np.exp(-diff_i/(2*kappa)), 1)
         coincidence[i,:] = sum_i
     
     return coincidence
