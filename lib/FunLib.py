@@ -49,6 +49,8 @@ def derivObjectiveTau(W, W_norm, tau, kappa, gamma, rates, ind):
     N = W.shape[0]
     
     tau_i = tau[i,:]
+    W_i = W[i,:]
+    W_norm_i = W_norm[i,:]
     
     # Set up the linear system for dr_k/dtau_ij:
     A = np.eye(N) - W*gamma/N
@@ -56,10 +58,10 @@ def derivObjectiveTau(W, W_norm, tau, kappa, gamma, rates, ind):
     
     diffsTau = tau_i - tau[i,j]
     derivGauss = diffsTau * np.exp(-diffsTau**2 / (2*kappa)) / kappa
-    derivGamma = W_norm[j] * derivGauss
-    derivGamma[j] = np.sum(W_norm * derivGauss)
+    derivGamma = W_norm[i,j] * derivGauss
+    derivGamma[j] = np.sum(W_norm_i * derivGauss)
     
-    b[i] = np.sum(W[i,:] * derivGamma * rates) / N
+    b[i] = np.sum(W_i * derivGamma * rates) / N
     
     # Solve for linear system
     derivRates = np.linalg.solve(A,b)
@@ -69,12 +71,65 @@ def derivObjectiveTau(W, W_norm, tau, kappa, gamma, rates, ind):
     
     return derivLearning
 
+
 def objectiveFun(r):
     '''
     The objective function, which returns the objective value given a vector of firing rates r
     '''
     
     return 0.5*np.sum(r**2)
+
+
+# ALTERNATIVE COINCIDENCE
+
+def coincidenceFactorOrig(kappa, W, tau):
+    '''
+    Use the old coincidence factor formula.
+    '''
+    
+    N = tau.shape[0]
+    coincidence = np.zeros(tau.shape)
+    for i in range(N):
+        v_i = np.reshape(tau[i,:], -1)
+        W_i = np.reshape(W[i,:], -1)
+        diff_i = np.abs(v_i - v_i[:,np.newaxis])**2
+        sum_i = -0.5 * kappa * np.sum(W_i * diff_i**2, 1)
+        
+        coincidence[i,:] = np.exp(sum_i)
+    
+    return coincidence
+
+
+def derivObjectiveTauOrig(W, tau, kappa, gamma, rates, ind):
+    '''
+    Use the old coincidence factor formula to implement gradient descent.
+    '''
+    
+    i = ind[0]
+    j = ind[1]
+    N = W.shape[0]
+    
+    tau_i = tau[i,:]
+    gamma_i = gamma[i,:]
+    W_i = W[i,:]
+    
+    # Set up the linear system for dr_k/dtau_ij:
+    A = np.eye(N) - W*gamma/N
+    b = np.zeros((N,))
+    
+    diffsTau = tau_i - tau[i,j]
+    derivGamma = diffsTau * gamma_i
+    derivGamma[j] = np.sum(W * derivGauss)
+    
+    b[i] = np.sum(W_i * derivGamma * rates) / N
+    
+    # Solve for linear system
+    derivRates = np.linalg.solve(A,b)
+    
+    # Derivative:
+    derivLearning = np.sum(rates * derivRates)
+    
+    return derivLearning
 
 
 # OLD CODE
