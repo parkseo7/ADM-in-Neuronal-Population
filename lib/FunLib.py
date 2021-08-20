@@ -8,6 +8,77 @@ from math import pi
 
 
 # MAIN FUNCTIONS
+
+def normalizeW(W):
+    '''
+    Normalize W by dividing each row by its sum.
+    '''
+    
+    W_sum = np.sum(W, 0)
+    W_norm = W / W_sum[:,np.newaxis]
+    
+    return W_norm
+
+
+def coincidenceFactor(kappa, W_norm, tau):
+    '''
+    Returns the coincidence factor matrix given 3-dimensional arrays. Here, W_norm is a normalized version of W, so that
+    every row of W_norm adds to 1.
+    '''
+    
+    N = tau.shape[0]
+    coincidence = np.zeros(tau.shape)
+    for i in range(N):
+        v_i = np.reshape(tau[i,:], -1)
+        W_i = np.reshape(W_norm[i,:], -1)
+        diff_i = np.abs(v_i - v_i[:,np.newaxis])**2
+        sum_i = np.sum(W_i * np.exp(-diff_i/(2*kappa)), 1)
+        
+        coincidence[i,:] = sum_i
+    
+    return coincidence
+
+
+def derivObjectiveTau(W, W_norm, tau, kappa, gamma, rates, ind):
+    '''
+    Obtain the derivative of the objective function with respect to the delay, at index ind.
+    '''
+    
+    i = ind[0]
+    j = ind[1]
+    N = W.shape[0]
+    
+    tau_i = tau[i,:]
+    
+    # Set up the linear system for dr_k/dtau_ij:
+    A = np.eye(N) - W*gamma/N
+    b = np.zeros((N,))
+    
+    diffsTau = tau_i - tau[i,j]
+    derivGauss = diffsTau * np.exp(-diffsTau**2 / (2*kappa)) / kappa
+    derivGamma = W_norm[j] * derivGauss
+    derivGamma[j] = np.sum(W_norm * derivGauss)
+    
+    b[i] = np.sum(W[i,:] * derivGamma * rates) / N
+    
+    # Solve for linear system
+    derivRates = np.linalg.solve(A,b)
+    
+    # Derivative:
+    derivLearning = np.sum(rates * derivRates)
+    
+    return derivLearning
+
+def objectiveFun(r):
+    '''
+    The objective function, which returns the objective value given a vector of firing rates r
+    '''
+    
+    return 0.5*np.sum(r**2)
+
+
+# OLD CODE
+
 def coincidenceFactorGauss(kappa, W, tau):
     '''
     An alternative way of computing the coincidence factor, so that differences are less punishing to the overall coincidence. 
@@ -43,7 +114,7 @@ def derivLearningRateSlow(W, tau, kappa, gamma0, gamma, rates, inds):
     W_sum = np.sum(W_i)
     if W_sum == 0:
         W_sum = 1.0
-    W_i = W[i,:] / W_sum
+    W_norm = W[i,:] / W_sum
     N = tau.shape[0]
  
     # Set up the linear system for dr_k/dtau_ij:
@@ -53,9 +124,9 @@ def derivLearningRateSlow(W, tau, kappa, gamma0, gamma, rates, inds):
     diffTau_ij = tau_i - tau[i,j]
     gauss_i = diffTau_ij * np.exp(-diffTau_ij**2 / (2*kappa))
     
-    derivGamma_i = W_i[j] * gauss_i
+    derivGamma_i = W_norm[j] * gauss_i
     coeff = gamma0 / kappa
-    derivGamma_i[j] = coeff * np.sum(W_i * gauss_i)
+    derivGamma_i[j] = coeff * np.sum(W_norm * gauss_i)
    
     b[i] = np.sum(W[i,:] * derivGamma_i * rates) / N
     
@@ -69,7 +140,9 @@ def derivLearningRateSlow(W, tau, kappa, gamma0, gamma, rates, inds):
     return derivLearning
 
 
-# OLD CODE
+# LOW-DIMENSIONAL
+
+
 def derivCoincidence(W, tau, kappa, gamma0, ind):
     '''
     At row = ind, obtain the non-zero derivatives of the coincidence factor with respect to tau_{ind,k} for all k. Each index k results
@@ -97,7 +170,7 @@ def derivCoincidence(W, tau, kappa, gamma0, ind):
     return coeff * derivGamma
     
 
-def derivLearningRate(W, tau, kappa, gamma0, gamma, rates, ind):
+def derivLearningRateOld(W, tau, kappa, gamma0, gamma, rates, ind):
     '''
     At row = ind, obtain the derivative dL(r)/dtau of the learning rate, to be directly used for gradient descent with eta.
     '''
@@ -130,7 +203,7 @@ def derivLearningRate(W, tau, kappa, gamma0, gamma, rates, ind):
     return derivL
 
     
-def coincidenceFactor(kappa, W, tau):
+def coincidenceFactorOld(kappa, W, tau):
     '''
     The coincidence factor function with respect to kappa and tau. Returns the matrix of coincidences.
     '''
@@ -200,14 +273,6 @@ def rowColMult(r):
     '''
     
     return r[:,np.newaxis]*r
-    
-    
-def objectiveFun(r):
-    '''
-    The objective function, which returns the objective value given a vector of firing rates r
-    '''
-    
-    return 0.5*np.sum(r**2)
     
     
 if __name__ == '__main__':
