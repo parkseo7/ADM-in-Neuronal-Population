@@ -118,9 +118,9 @@ def derivObjectiveTauOrig(W, tau, kappa, gamma, rates, ind):
     b = np.zeros((N,))
     
     diffsTau = tau_i - tau[i,j]
-    derivGamma = diffsTau * gamma_i
-    derivGamma[j] = np.sum(W * derivGauss)
-    
+    derivGamma = W[i,j] * diffsTau
+    derivGamma[j] = np.sum(W_i * diffsTau)
+    derivGamma = -0.5 * kappa * gamma[i,j]
     b[i] = np.sum(W_i * derivGamma * rates) / N
     
     # Solve for linear system

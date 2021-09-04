@@ -8,22 +8,10 @@ clear;
 addpath('matrices');
 addpath('fcns');
 
-% Set up directory (check if it exists)
-foldername = 'ICBM' ;
-cwd = pwd ;
-dir_folder = fullfile(cwd, 'arrays', foldername) ;
-
-if ~exist(dir_folder, 'dir')
-   mkdir(dir_folder)
-end
-
-filename = 'results2.mat'; % .csv file name
-dir_file = fullfile(dir_folder, filename); % Export directory
-
 % Import connection matrices from 'matrices' folder
-importname = 'ICBM';
-dir_W = fullfile(cwd, 'matrices', importname, 'icbm_fiber_mat.txt');
-dir_pos = fullfile(cwd, 'matrices', importname, 'fs_region_centers_68_sort.txt');
+importName = 'train';
+dir_W = fullfile(cwd, 'matrices', importName, 'W_train1.txt');
+dir_pos = fullfile(cwd, 'matrices', importName, 'pos_train1.txt');
 
 W = dlmread(dir_W); % Symmetric matrix
 % W = (W > 0.0002) .* W ; % Remove all negligible connections
