@@ -9,7 +9,7 @@ addpath('matrices');
 addpath('fcns');
 
 % Set up directory to export (check if it exists)
-exportName = 'trial2' ;
+exportName = 'trial8' ;
 cwd = pwd ;
 dir_folder = fullfile(cwd, 'arrays', 'ICBM_Matlab', exportName) ;
 
@@ -20,6 +20,7 @@ end
 % Import connection matrices from 'matrices' folder
 importName = 'ICBM';
 dir_W = fullfile(cwd, 'matrices', importName, 'icbm_fiber_mat.txt');
+
 dir_pos = fullfile(cwd, 'matrices', importName, 'fs_region_centers_68_sort.txt');
 
 W_raw = dlmread(dir_W); % Symmetric matrix
@@ -32,11 +33,10 @@ is_sec = true;
 
 % Parameters (custom)
 r00 = 0.1; % Baseline uniform rate (in mHz)
-vRange = [0.5, 2.0]; % Initial velocities
+vRange = [0.1, 0.5]; % Initial velocities
 numIters = 2000; % Number of iterations
-kappa = 1.5 * 10; % Std of coincidence (in ms)
-eta = 0.001; % Base learning rate
-
+kappa = 30; % Std of coincidence (in ms)
+eta = 1.2 * 1e-3; % 1e-3; % Base learning rate
 % Set up other parameters
 N = size(pos, 1);
 r0 = r00 * ones(N,1);
@@ -74,6 +74,9 @@ params = struct( ...
     'numIters', numIters ...
     );
 
+% Gradient mode
+gradientMode = 2;
+
 % Adagrad parameters
 params.epsilon = 1e-8;
 params.avg_fac = 0.90;
@@ -83,7 +86,7 @@ params.sam_size = 0.10;
 
 % IMPLEMENT LEARNING:
 initime = cputime;
-output = ADMLearn(params, 1); % 1 for Adadelta
+output = ADMLearn(params, gradientMode); % 1 for Adadelta
 fintime = cputime;
 
 comp_time = fintime - initime;

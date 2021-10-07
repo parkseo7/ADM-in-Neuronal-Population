@@ -1,4 +1,4 @@
-function output = ADMLearn(params, mode)
+function output = ADMLearn(params)
 % Implement the learning rule on the conduction velocities, given the data.
 % Returns arrays of plottable information
 
@@ -13,12 +13,13 @@ kappa = params.kappa;
 eta = params.eta;
 numIters = params.numIters;
 
-alpha1 = params.alpha1;
-alpha2 = params.alpha2;
+alpha1 = params.C1 / N;
+alpha2 = params.C2 / N^2;
 
+mode = params.gradientMode;
 epsilon = params.epsilon;
-avg_fac = params.avg_fac;
-sam_size = params.sam_size;
+avg_fac = params.avgFac;
+sam_size = params.samSize;
 
 % Sample size for output arrays
 W_inds = find(W ~= 0);
@@ -34,6 +35,8 @@ vel_arr = zeros(M, numIters);
 grad_arr = zeros(M, numIters);
 slope_arr = zeros(M, numIters);
 gamma_arr = zeros(M, numIters);
+obj_arr = zeros(numIters, 1);
+
 
 % INITIALIZE
 tau = tau0;
@@ -41,6 +44,9 @@ vel = v0;
 gamma0 = coincidenceFactor(W, tau0, kappa, N);
 
 ada_fac = zeros(N);
+slope_prev = zeros(N);
+BV = zeros(N);
+
 % Wait bar
 f = waitbar(0,'Starting trials...') ;
 
@@ -79,23 +85,31 @@ for k=1:numIters
     
     % Cost function
     cost = alpha1 * alpha2 * exp(alpha2 * tau);
-    
     gradL_vel = (gradL - cost) .* (-dist ./ (vel.^2));
     
     % Implment gradient descent. May need to impose decay of eta over time.
-    
-    
-    
-    if (mode == 1) % Adagrad
+    if (mode == "adagrad") % Adagrad
         ada_fac = avg_fac * ada_fac + (1 - avg_fac) * gradL_vel.^2;
         slope = gradL_vel ./ (sqrt(ada_fac + epsilon));
+        
+    elseif (mode == "adagradBV") % Adagrad with bounded variation
+        ada_fac = avg_fac * ada_fac + (1 - avg_fac) * gradL_vel.^2;
+        slope = gradL_vel ./ (sqrt(ada_fac + epsilon));
+        
+        % If slope exceeds BV, reduce it
+        slopeMult = ones(N) - 0.5*(abs(slope - slope_prev) > 0.75*BV);
+        slope = slopeMult .* slope;
+        
+        % Bounded variation (with would-be slope)
+        BV = ((k-1)*BV + abs(slope_prev - slope)) / k;
+        slope_prev = slope;
+        
     else
         slope = gradL_vel / (1 + norm(gradL_vel));
     end
     
     vel = vel + eta * slope;
     tau = dist ./ vel;
-
     % STORE INTO ARRAYS:
     rE_arr(:,k) = rE;
     eigs_arr(:,k) = eigs;
@@ -104,21 +118,19 @@ for k=1:numIters
     grad_arr(:,k) = gradL_vel(inds);
     slope_arr(:,k) = slope(inds);
     gamma_arr(:,k) = gamma(inds);
+    obj_arr(k) = sum(rE.^2)/2 - alpha1 * sum(exp(alpha2 * tau), 'all');
 end
 
 close(f);
+
+% Process arrays
+[ratesMax,~] = computeRatesEigs(W, ones(N,1), r0, N);
+objMax = sum(ratesMax.^2) / 2;
 
 % Final values after learning
 tauf = tau;
 velf = vel;
 gammaf = gamma;
-
-% Mode:
-if (mode == 1)
-    learning = 'adadelta';
-else
-    learning = 'normalize';
-end
 
 % CONFIGURE OUTPUT:
 output = struct( ...
@@ -134,7 +146,11 @@ output = struct( ...
     'gammaf', gammaf, ...
     'tauf', tauf, ...
     'velf', velf, ...
-    'mode', learning ...
+    'obj_arr', obj_arr, ...
+    'objMax', objMax, ...
+    'mode', mode, ...
+    'alpha1', alpha1, ...
+    'alpha2', alpha2 ...
     );
 
 end
